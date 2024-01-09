@@ -39,6 +39,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.activemq.artemis.api.core.management.ResourceNames;
 import org.apache.activemq.artemis.core.config.MetricsConfiguration;
 import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
+import org.apache.activemq.artemis.core.server.ActiveMQServer;
 import org.apache.activemq.artemis.core.settings.HierarchicalRepository;
 import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.slf4j.Logger;
@@ -56,7 +57,8 @@ public class MetricsManager {
 
    private final HierarchicalRepository<AddressSettings> addressSettingsRepository;
 
-   public MetricsManager(String brokerName,
+   public MetricsManager(ActiveMQServer server,
+                         String brokerName,
                          MetricsConfiguration metricsConfiguration,
                          HierarchicalRepository<AddressSettings> addressSettingsRepository) {
       this.brokerName = brokerName;
@@ -85,6 +87,13 @@ public class MetricsManager {
          }
          if (metricsConfiguration.isUptime()) {
             new UptimeMetrics().bindTo(meterRegistry);
+         }
+         //if (metricsConfiguration.isSecurityStore()) {
+         if (true) {
+            server.getSecurityStore().getAuthenticationMetrics().bindTo(meterRegistry);
+         }
+         if (true) {
+            server.getSecurityStore().getAuthorizationMetrics().bindTo(meterRegistry);
          }
       }
    }

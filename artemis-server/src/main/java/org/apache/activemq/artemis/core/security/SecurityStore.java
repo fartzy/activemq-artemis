@@ -18,7 +18,11 @@ package org.apache.activemq.artemis.core.security;
 
 import javax.security.auth.Subject;
 import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.core.security.impl.AuthenticationMetrics;
+import org.apache.activemq.artemis.core.security.impl.AuthorizationMetrics;
 import org.apache.activemq.artemis.spi.core.protocol.RemotingConnection;
+
+import java.lang.invoke.MethodHandle;
 
 public interface SecurityStore {
 
@@ -37,4 +41,8 @@ public interface SecurityStore {
    void stop();
 
    Subject getSessionSubject(SecurityAuth session);
+
+   public AuthenticationMetrics getAuthenticationMetrics();
+
+   public AuthorizationMetrics getAuthorizationMetrics();
 }

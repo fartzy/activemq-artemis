@@ -668,6 +668,12 @@ public final class ActiveMQDefaultConfiguration {
    // Whether or not to report uptime metrics
    private static final boolean DEFAULT_UPTIME_METRICS = false;
 
+   // Whether or not to report authentication metrics
+   private static final boolean DEFAULT_AUTHENTICATION_METRICS = false;
+
+   // Whether or not to report authorization metrics
+   private static final boolean DEFAULT_AUTHORIZATION_METRICS = false;
+
    // How often (in ms) to scan for expired MQTT sessions
    private static long DEFAULT_MQTT_SESSION_SCAN_INTERVAL = 500;
 
@@ -1836,13 +1842,19 @@ public final class ActiveMQDefaultConfiguration {
       return DEFAULT_UPTIME_METRICS;
    }
 
+   public static Boolean getDefaultAuthenticationMetrics() {
+      return DEFAULT_AUTHENTICATION_METRICS;
+   }
+
+   public static Boolean getDefaultAuthorizationMetrics() {
+      return DEFAULT_AUTHORIZATION_METRICS;
+   }
    /**
     * How often (in ms) to scan for expired MQTT sessions
     */
    public static long getMqttSessionScanInterval() {
       return DEFAULT_MQTT_SESSION_SCAN_INTERVAL;
    }
-
    public static boolean getDefaultSuppressSessionNotifications() {
       return DEFAULT_SUPPRESS_SESSION_NOTIFICATIONS;
    }

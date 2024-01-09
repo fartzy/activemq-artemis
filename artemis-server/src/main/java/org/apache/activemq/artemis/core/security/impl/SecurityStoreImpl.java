@@ -19,11 +19,15 @@ package org.apache.activemq.artemis.core.security.impl;
 import javax.security.auth.Subject;
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.Tag;
 import org.apache.activemq.artemis.api.core.Pair;
 import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.api.core.management.CoreNotificationType;
@@ -36,6 +40,7 @@ import org.apache.activemq.artemis.core.security.SecurityAuth;
 import org.apache.activemq.artemis.core.security.SecurityStore;
 import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
 import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
+import org.apache.activemq.artemis.core.server.MessageReference;
 import org.apache.activemq.artemis.core.server.management.Notification;
 import org.apache.activemq.artemis.core.server.management.NotificationService;
 import org.apache.activemq.artemis.core.settings.HierarchicalRepository;
@@ -79,6 +84,10 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
 
    private final NotificationService notificationService;
 
+   protected final AuthenticationMetrics authenticationMetrics;
+
+   protected final AuthorizationMetrics authorizationMetrics;
+
 
    /**
     * @param notificationService can be <code>null</code>
@@ -102,10 +111,12 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
                                         .maximumSize(authenticationCacheSize)
                                         .expireAfterWrite(invalidationInterval, TimeUnit.MILLISECONDS)
                                         .build();
+      authenticationMetrics = new AuthenticationMetrics(authenticationCache);
       authorizationCache = CacheBuilder.newBuilder()
                                        .maximumSize(authorizationCacheSize)
                                        .expireAfterWrite(invalidationInterval, TimeUnit.MILLISECONDS)
                                        .build();
+      authorizationMetrics = new AuthorizationMetrics(authorizationCache);
       this.securityRepository.registerListener(this);
    }
 
@@ -148,6 +159,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
              * operation between nodes
              */
             if (!managementClusterPassword.equals(password)) {
+               authenticationMetrics.incrementAuthenticationCount(false);
                throw ActiveMQMessageBundle.BUNDLE.unableToValidateClusterUser(user);
             } else {
                return managementClusterUser;
@@ -161,6 +173,8 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
          Subject subject = null;
          Pair<Boolean, Subject> cacheEntry = authenticationCache.getIfPresent(createAuthenticationCacheKey(user, password, connection));
          if (cacheEntry != null) {
+            //register a cache hit
+            authenticationMetrics.incrementAuthenticationCacheCount(true);
             if (!cacheEntry.getA()) {
                // cached authentication failed previously so don't check again
                check = false;
@@ -172,6 +186,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
                validatedUser = getUserFromSubject(subject);
             }
          } else {
+            authenticationMetrics.incrementAuthenticationCacheCount(false);
             if (user == null && password == null && connection instanceof ManagementRemotingConnection) {
                AccessControlContext accessControlContext = AccessController.getContext();
                if (accessControlContext != null) {
@@ -187,6 +202,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
                try {
                   subject = ((ActiveMQSecurityManager5) securityManager).authenticate(user, password, connection, securityDomain);
                   authenticationCache.put(createAuthenticationCacheKey(user, password, connection), new Pair<>(subject != null, subject));
+                  authenticationMetrics.incrementAuthenticationCachePutCount();
                   validatedUser = getUserFromSubject(subject);
                } catch (NoCacheLoginException e) {
                   handleNoCacheLoginException(e);
@@ -206,6 +222,8 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
          if (!userIsValid && validatedUser == null) {
             authenticationFailed(user, connection);
          }
+
+
 
          if (connection != null) {
             connection.setSubject(subject);
@@ -319,6 +337,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
          } else {
             set = new ConcurrentHashSet<>();
             authorizationCache.put(key, set);
+            authorizationMetrics.incrementCachePutCount();
          }
          set.add(fqqn != null ? fqqn : bareAddress);
       }
@@ -363,6 +382,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
 
    private void authenticationFailed(String user, RemotingConnection connection) throws Exception {
       String certSubjectDN = CertificateUtil.getCertSubjectDN(connection);
+      authenticationMetrics.incrementAuthenticationCount(false);
 
       if (notificationService != null) {
          TypedProperties props = new TypedProperties();
@@ -395,7 +415,6 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
     */
    private Subject getSubjectForAuthorization(SecurityAuth auth, ActiveMQSecurityManager5 securityManager) {
       Pair<Boolean, Subject> cached = authenticationCache.getIfPresent(createAuthenticationCacheKey(auth.getUsername(), auth.getPassword(), auth.getRemotingConnection()));
-
       if (cached == null && auth.getUsername() == null && auth.getPassword() == null && auth.getRemotingConnection() instanceof ManagementRemotingConnection) {
          AccessControlContext accessControlContext = AccessController.getContext();
          if (accessControlContext != null) {
@@ -408,9 +427,11 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
        * successfully authenticate before requesting authorization for anything.
        */
       if (cached == null) {
+         authenticationMetrics.incrementAuthenticationCacheCount(false);
          try {
             Subject subject = securityManager.authenticate(auth.getUsername(), auth.getPassword(), auth.getRemotingConnection(), auth.getSecurityDomain());
             authenticationCache.put(createAuthenticationCacheKey(auth.getUsername(), auth.getPassword(), auth.getRemotingConnection()), new Pair<>(subject != null, subject));
+            authenticationMetrics.incrementAuthenticationCachePutCount();
             return subject;
          } catch (NoCacheLoginException e) {
             handleNoCacheLoginException(e);
@@ -447,7 +468,8 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
       if (act != null) {
          granted = act.contains(dest);
       }
-
+      authorizationMetrics.incrementCacheCount(granted);
+      authorizationMetrics.incrementCount(granted);
       return granted;
    }
 
@@ -457,5 +479,12 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
 
    private String createAuthorizationCacheKey(String user, CheckType checkType) {
       return user + "." + checkType.name();
+   }
+
+   public AuthenticationMetrics getAuthenticationMetrics() {
+      return authenticationMetrics;
+   }
+   public AuthorizationMetrics getAuthorizationMetrics() {
+      return authorizationMetrics;
    }
 }
