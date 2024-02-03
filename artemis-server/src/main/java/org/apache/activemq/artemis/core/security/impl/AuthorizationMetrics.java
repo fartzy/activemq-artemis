@@ -18,10 +18,11 @@
 package org.apache.activemq.artemis.core.security.impl;
 
 import com.google.common.cache.Cache;
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
-
 import io.micrometer.core.instrument.binder.cache.CacheMeterBinder;
-import io.micrometer.core.instrument.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,23 +32,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 
-public class AuthenticationMetrics extends CacheMeterBinder<Cache> {
+public class AuthorizationMetrics extends CacheMeterBinder<Cache> {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String METRIC_NAME_PREFIX = "artemis.authentication.";
-    private static final String CACHE_TYPE = "authentication";
+    private static final String METRIC_NAME_PREFIX = "artemis.authorization.";
+    private static final String CACHE_TYPE = "authorization";
     private static final String CACHE_TYPE_TAG_NAME = "type";
     private static final String NON_UNIQUE_METER_NAME = "cache.gets";
     private static final String RESULT_TAG_NAME = "result";
 
 
-    private static final String DESCRIPTION_AUTHENTICATION_FAILURE = "The number of times authenticating to the broker has failed.";
+    private static final String DESCRIPTION_AUTHORIZATION_FAILURE = "The number of times authorizing to the broker has failed.";
 
-    private static final String DESCRIPTION_AUTHENTICATION_SUCCESS = "The number of times authenticating to the broker has been successful.";
+    private static final String DESCRIPTION_AUTHORIZATION_SUCCESS = "The number of times authorizing to the broker has been successful.";
     Map<String, ToDoubleFunction> METER_NAMES_TO_METER_FUNCTIONS_MAP = new ConcurrentHashMap<>(
             Map.of(
                     "cache.size",  (c) -> {
@@ -62,62 +62,62 @@ public class AuthenticationMetrics extends CacheMeterBinder<Cache> {
             )
     );
 
-    private static final AtomicLongFieldUpdater<AuthenticationMetrics> AUTHENTICATION_SUCCESS_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthenticationMetrics.class, "authenticationSuccessCount");
-    private static final AtomicLongFieldUpdater<AuthenticationMetrics> AUTHENTICATION_FAILURE_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthenticationMetrics.class, "authenticationFailureCount");
-    private static final AtomicLongFieldUpdater<AuthenticationMetrics> AUTHENTICATION_CACHE_MISS_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthenticationMetrics.class, "authenticationCacheMissCount");
-    private static final AtomicLongFieldUpdater<AuthenticationMetrics> AUTHENTICATION_CACHE_HIT_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthenticationMetrics.class, "authenticationCacheHitCount");
-    private static final AtomicLongFieldUpdater<AuthenticationMetrics> AUTHENTICATION_CACHE_PUT_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthenticationMetrics.class, "authenticationCachePutCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_SUCCESS_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "authorizationSuccessCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_FAILURE_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "authorizationFailureCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_CACHE_MISS_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "authorizationCacheMissCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_CACHE_HIT_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "authorizationCacheHitCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_CACHE_PUT_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "authorizationCachePutCount");
 
-    private volatile long authenticationCacheHitCount;
+    private volatile long authorizationCacheHitCount;
 
-    private volatile long authenticationCacheMissCount;
+    private volatile long authorizationCacheMissCount;
 
-    private volatile long authenticationFailureCount;
+    private volatile long authorizationFailureCount;
 
-    private volatile long authenticationSuccessCount;
+    private volatile long authorizationSuccessCount;
 
-    private volatile long authenticationCachePutCount;
+    private volatile long authorizationCachePutCount;
 
-    public AuthenticationMetrics(Cache cache) {
-        super(cache, "authentication", new ArrayList<>(List.of(new ImmutableTag("type", "authentication"))));
+    public AuthorizationMetrics(Cache cache) {
+        super(cache, "authorization", new ArrayList<>(List.of(new ImmutableTag("type", "authorization"))));
     }
 
-    public void incrementAuthenticationCacheCount(boolean cacheHit) {
+    public void incrementAuthorizationCacheCount(boolean cacheHit) {
         if (cacheHit) {
-            AUTHENTICATION_CACHE_HIT_COUNT.incrementAndGet(this);
+            AUTHORIZATION_CACHE_HIT_COUNT.incrementAndGet(this);
             if (logger.isDebugEnabled()) {
-                logger.debug("{} increment authenticationCacheHitCount to {}: {}", this, authenticationCacheHitCount);
+                logger.debug("{} increment authorizationCacheHitCount to {}: {}", this, authorizationCacheHitCount);
             }
         } else {
-            AUTHENTICATION_CACHE_MISS_COUNT.incrementAndGet(this);
+            AUTHORIZATION_CACHE_MISS_COUNT.incrementAndGet(this);
             if (logger.isDebugEnabled()) {
-                logger.debug("{} increment authenticationCacheMissCount to {}: {}", this, authenticationCacheMissCount);
+                logger.debug("{} increment authorizationCacheMissCount to {}: {}", this, authorizationCacheMissCount);
             }
         }
     }
 
-    public void incrementAuthenticationCount(boolean success) {
+    public void incrementAuthorizationCount(boolean success) {
         if (success) {
-            AUTHENTICATION_SUCCESS_COUNT.incrementAndGet(this);
+            AUTHORIZATION_SUCCESS_COUNT.incrementAndGet(this);
             if (logger.isDebugEnabled()) {
-                logger.debug("{} increment authenticationSuccessCount to {}: {}", this, authenticationSuccessCount);
+                logger.debug("{} increment authorizationSuccessCount to {}: {}", this, authorizationSuccessCount);
             }
         } else {
-            AUTHENTICATION_FAILURE_COUNT.incrementAndGet(this);
+            AUTHORIZATION_FAILURE_COUNT.incrementAndGet(this);
             if (logger.isDebugEnabled()) {
-                logger.debug("{} increment authenticationFailureCount to {}: {}", this, authenticationFailureCount);
+                logger.debug("{} increment authorizationFailureCount to {}: {}", this, authorizationFailureCount);
             }
         }
     }
-    public void incrementAuthenticationCachePutCount() {
-        AUTHENTICATION_CACHE_PUT_COUNT.incrementAndGet(this);
+    public void incrementAuthorizationCachePutCount() {
+        AUTHORIZATION_CACHE_PUT_COUNT.incrementAndGet(this);
         if (logger.isDebugEnabled()) {
-            logger.debug("{} increment authenticationCachePutCount to {}: {}", this, authenticationCachePutCount);
+            logger.debug("{} increment authorizationCachePutCount to {}: {}", this, authorizationCachePutCount);
         }
     }
     @Override
@@ -129,30 +129,30 @@ public class AuthenticationMetrics extends CacheMeterBinder<Cache> {
         return null;
     }
 
-    protected long failureCount() { return authenticationFailureCount; }
-    protected long successCount() { return authenticationSuccessCount; }
+    protected long failureCount() { return authorizationFailureCount; }
+    protected long successCount() { return authorizationSuccessCount; }
 
     @Override
-    protected long hitCount() { return authenticationCacheHitCount; }
+    protected long hitCount() { return authorizationCacheHitCount; }
 
     @Override
-    protected Long missCount() { return authenticationCacheMissCount; }
+    protected Long missCount() { return authorizationCacheMissCount; }
 
     @Override
     protected Long evictionCount() { return null; }
 
     @Override
-    protected long putCount() { return authenticationCachePutCount; }
+    protected long putCount() { return authorizationCachePutCount; }
     @Override
     protected void bindImplementationSpecificMetrics(MeterRegistry registry) {
-        FunctionCounter.builder(METRIC_NAME_PREFIX + "failure.count", AUTHENTICATION_FAILURE_COUNT, c -> this.failureCount())
+        FunctionCounter.builder(METRIC_NAME_PREFIX + "failure.count", AUTHORIZATION_FAILURE_COUNT, c -> this.failureCount())
                 .tags("result", "failure")
-                .description(DESCRIPTION_AUTHENTICATION_FAILURE)
+                .description(DESCRIPTION_AUTHORIZATION_FAILURE)
                 .register(registry);
 
-        FunctionCounter.builder(METRIC_NAME_PREFIX + "success.count", AUTHENTICATION_SUCCESS_COUNT, c -> this.successCount())
+        FunctionCounter.builder(METRIC_NAME_PREFIX + "success.count", AUTHORIZATION_SUCCESS_COUNT, c -> this.successCount())
                 .tags("result", "success")
-                .description(DESCRIPTION_AUTHENTICATION_SUCCESS)
+                .description(DESCRIPTION_AUTHORIZATION_SUCCESS)
                 .register(registry);
 
         prependMetricNameWithArtemisPrefix(registry);

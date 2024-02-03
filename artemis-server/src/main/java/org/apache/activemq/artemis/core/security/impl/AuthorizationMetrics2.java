@@ -29,16 +29,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-public class AuthorizationMetrics extends SecurityMetrics<AuthorizationMetrics> {
+public class AuthorizationMetrics2 extends SecurityMetrics<AuthorizationMetrics2> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String METRIC_NAME_PREFIX = "artemis.authorization.";
     private static final String CACHE_TYPE = "authorization";
     private static final String DESCRIPTION_AUTHORIZATION_FAILURE = "The number of times authorization has failed.";
     private static final String DESCRIPTION_AUTHORIZATION_SUCCESS = "The number of times authorization has been successful.";
-    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_SUCCESS_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "successCount");
-    private static final AtomicLongFieldUpdater<AuthorizationMetrics> AUTHORIZATION_FAILURE_COUNT =
-            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics.class, "failureCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics2> AUTHORIZATION_SUCCESS_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics2.class, "successCount");
+    private static final AtomicLongFieldUpdater<AuthorizationMetrics2> AUTHORIZATION_FAILURE_COUNT =
+            AtomicLongFieldUpdater.newUpdater(AuthorizationMetrics2.class, "failureCount");
     private GuavaCacheMetrics authorizationCacheMetrics;
 
     @Override
@@ -63,12 +63,12 @@ public class AuthorizationMetrics extends SecurityMetrics<AuthorizationMetrics> 
     };
 
     @Override
-    protected AtomicLongFieldUpdater<AuthorizationMetrics> getSuccessCountUpdater() {
+    protected AtomicLongFieldUpdater<AuthorizationMetrics2> getSuccessCountUpdater() {
         return AUTHORIZATION_SUCCESS_COUNT;
     }
 
     @Override
-    protected AtomicLongFieldUpdater<AuthorizationMetrics> getFailureCountUpdater() {
+    protected AtomicLongFieldUpdater<AuthorizationMetrics2> getFailureCountUpdater() {
         return AUTHORIZATION_FAILURE_COUNT;
     }
 
@@ -99,7 +99,7 @@ public class AuthorizationMetrics extends SecurityMetrics<AuthorizationMetrics> 
     protected long putCount() {
         return cachePutCount;
     }
-    public AuthorizationMetrics(Cache cache) {
+    public AuthorizationMetrics2(Cache cache) {
         super(cache, CACHE_TYPE, new ArrayList<>(List.of(new ImmutableTag(CACHE_TYPE_TAG_NAME, CACHE_TYPE))));
     }
 
