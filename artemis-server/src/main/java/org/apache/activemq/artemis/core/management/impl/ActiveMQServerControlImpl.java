@@ -3580,7 +3580,7 @@ public class ActiveMQServerControlImpl extends AbstractControl implements Active
       addressSettings.setExpiryQueueSuffix(expiryQueueSuffix == null || expiryQueueSuffix.isEmpty() ? null : new SimpleString(expiryQueueSuffix));
       addressSettings.setEnableMetrics(enableMetrics);
 
-      server.getAddressSettingsRepository().addMatch(address, addressSettings);
+       server.getAddressSettingsRepository().addMatch(address, addressSettings);
 
       storageManager.storeAddressSetting(new PersistedAddressSetting(new SimpleString(address), addressSettings));
 

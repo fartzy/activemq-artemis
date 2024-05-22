@@ -19,15 +19,11 @@ package org.apache.activemq.artemis.core.security.impl;
 import javax.security.auth.Subject;
 import java.security.AccessControlContext;
 import java.security.AccessController;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import io.micrometer.core.instrument.ImmutableTag;
-import io.micrometer.core.instrument.Tag;
 import org.apache.activemq.artemis.api.core.Pair;
 import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.api.core.management.CoreNotificationType;
@@ -40,7 +36,6 @@ import org.apache.activemq.artemis.core.security.SecurityAuth;
 import org.apache.activemq.artemis.core.security.SecurityStore;
 import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
 import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
-import org.apache.activemq.artemis.core.server.MessageReference;
 import org.apache.activemq.artemis.core.server.management.Notification;
 import org.apache.activemq.artemis.core.server.management.NotificationService;
 import org.apache.activemq.artemis.core.settings.HierarchicalRepository;
@@ -337,7 +332,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
          } else {
             set = new ConcurrentHashSet<>();
             authorizationCache.put(key, set);
-            authorizationMetrics.incrementCachePutCount();
+            authorizationMetrics.incrementAuthorizationCachePutCount();
          }
          set.add(fqqn != null ? fqqn : bareAddress);
       }
@@ -468,8 +463,8 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
       if (act != null) {
          granted = act.contains(dest);
       }
-      authorizationMetrics.incrementCacheCount(granted);
-      authorizationMetrics.incrementCount(granted);
+      authorizationMetrics.incrementAuthorizationCacheCount(granted);
+      authorizationMetrics.incrementAuthorizationCount(granted);
       return granted;
    }
 
