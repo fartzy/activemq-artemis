@@ -79,10 +79,7 @@ public class SecurityStoreImpl implements SecurityStore, HierarchicalRepositoryC
    private final String managementClusterPassword;
 
    private final NotificationService notificationService;
-
-   protected final AuthenticationMetrics authenticationMetrics;
-
-   protected final AuthorizationMetrics authorizationMetrics;
+   
    /**
     * @param notificationService can be <code>null</code>
     */
